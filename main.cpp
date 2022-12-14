@@ -21,33 +21,31 @@ namespace {
     unsigned char Start = 0;
 }// namespace
 
-struct life_map_t;
+struct LifeMap;
 
-typedef int (*act_t)(life_map_t *, life_map_t *, int self_x, int self_y);
+using ActionFunc = std::function<int(const LifeMap&, LifeMap&, int self_x, int self_y)>;
 
-struct cell_t {
-    act_t act;
-    int pow;
+struct Cell {
+    ActionFunc act;
+    int pow = 0;
 };
 
-struct life_map_t {
-    cell_t cell[CellNumberX][CellNumberY];
-    int max_x;
-    int max_y;
-    int impression;
+struct LifeMap {
+    Cell cell[CellNumberX][CellNumberY];
+    int max_x = 0;
+    int max_y = 0;
+    int impression = 0;
 };
 
-void lifeInit(life_map_t *map, act_t act, int pow, int impression) {
-    int i = 0, j = 0;
-
+void lifeInit(LifeMap *map, const ActionFunc& actFn, int pow, int impression) {
     map->max_x = sizeof(map->cell) / sizeof(map->cell[0]);
     map->max_y = sizeof(map->cell[0]) / sizeof(map->cell[0][0]);
 
     map->impression = impression;
 
-    for (j = 0; j < CellNumberY; j++)
-        for (i = 0; i < CellNumberX; i++) {
-            map->cell[i][j].act = act;
+    for (int j = 0; j < CellNumberY; j++)
+        for (int i = 0; i < CellNumberX; i++) {
+            map->cell[i][j].act = actFn;
             map->cell[i][j].pow = pow;
         }
 }
@@ -55,14 +53,14 @@ void lifeInit(life_map_t *map, act_t act, int pow, int impression) {
 void lifeOrigin() {
 }
 
-void lifeQuant(life_map_t *map_in, life_map_t *map_out) {
+void lifeQuant(const LifeMap& map_in, LifeMap& map_out) {
     for (int j = 0; j < CellNumberY; j++)
         for (int i = 0; i < CellNumberX; i++) {
-            map_in->cell[i][j].act(map_in, map_out, i, j);
+            map_in.cell[i][j].act(map_in, map_out, i, j);
         }
 }
 
-int lifeAct(life_map_t *map_in, life_map_t *map_out, int self_x, int self_y) {
+int lifeAct(const LifeMap& map_in, LifeMap& map_out, int self_x, int self_y) {
 
     int sum = 0;
     for (int j = -1; j <= 1; j++)
@@ -72,23 +70,23 @@ int lifeAct(life_map_t *map_in, life_map_t *map_out, int self_x, int self_y) {
             } else {
                 int rx = self_x + i;
                 int ry = self_y + j;
-                if (rx >= 0 && rx < map_in->max_x && ry >= 0 && ry < map_in->max_y)
-                    sum += map_in->cell[rx][ry].pow;
+                if (rx >= 0 && rx < map_in.max_x && ry >= 0 && ry < map_in.max_y)
+                    sum += map_in.cell[rx][ry].pow;
                 else
-                    sum += map_in->impression;
+                    sum += map_in.impression;
             }
         }
 
-    if (map_in->cell[self_x][self_y].pow > 0) {   // Если клетка живая
+    if (map_in.cell[self_x][self_y].pow > 0) {   // Если клетка живая
         if (sum == 2 || sum == 3)                 // Если есть 2 или 3 живые соседки
-            map_out->cell[self_x][self_y].pow = 1;// то клетка продолжает жить
+            map_out.cell[self_x][self_y].pow = 1;// то клетка продолжает жить
         else
-            map_out->cell[self_x][self_y].pow = 0;// иначе умирает
+            map_out.cell[self_x][self_y].pow = 0;// иначе умирает
     } else {                                      // Если пусто
         if (sum == 3)                             // Если есть ровно 3 живые соседки
-            map_out->cell[self_x][self_y].pow = 1;// зарождается жизнь в клетке
+            map_out.cell[self_x][self_y].pow = 1;// зарождается жизнь в клетке
         else
-            map_out->cell[self_x][self_y].pow = 0;
+            map_out.cell[self_x][self_y].pow = 0;
     }
     return 0;
 }
@@ -98,16 +96,16 @@ void reshape(int w, int h);
 void display();
 void keyPressed(unsigned char key, int x, int y);
 void mouseEvent(int button, int state, int x, int y);
-void displayLifeMap(life_map_t *map);
+void displayLifeMap(const LifeMap& map);
 void displayNet();
 void timerEvent(int value);
 
-life_map_t inMap;
-life_map_t outMap;
+LifeMap inMap;
+LifeMap outMap;
 
 int main(int argc, char *argv[]) {
     lifeInit(&inMap, lifeAct, 0, 0);
-    std::memcpy(&outMap, &inMap, sizeof(inMap));
+    outMap = inMap;
 
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA); /*Включаем двойную буферизацию и четырехкомпонентный цвет*/
@@ -141,7 +139,7 @@ void display() {
     glClear(GL_COLOR_BUFFER_BIT);
 
     displayNet();
-    displayLifeMap(&inMap);
+    displayLifeMap(inMap);
     glutSwapBuffers();
 }
 
@@ -195,10 +193,10 @@ void displayNet() {
     glEnd();
 }
 
-void displayLifeMap(life_map_t *map) {
-    for (int j = 0; j < map->max_y; j++)
-        for (int i = 0; i < map->max_x; i++) {
-            if (map->cell[i][j].pow > 0) {
+void displayLifeMap(const LifeMap& map) {
+    for (int j = 0; j < map.max_y; j++)
+        for (int i = 0; i < map.max_x; i++) {
+            if (map.cell[i][j].pow > 0) {
                 glBegin(GL_QUADS);
                 glColor3f(1.0, 1.0, 1.0);
                 glVertex2i(i * PxLineX, j * PxLineY);
@@ -212,8 +210,8 @@ void displayLifeMap(life_map_t *map) {
 
 void timerEvent(int value) {
     if (Start) {
-        lifeQuant(&inMap, &outMap);
-        memcpy(&inMap, &outMap, sizeof(inMap));
+        lifeQuant(inMap, outMap);
+        inMap = outMap;
         display();
         glutTimerFunc(TimeDelay, timerEvent, 1);
     }
