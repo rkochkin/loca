@@ -1,5 +1,6 @@
-#include <stdio.h>
-#include <string.h>
+#include <cstring>
+#include <functional>
+#include <iostream>
 
 #if defined(linux) || defined(_WIN32)
 #include <GL/glut.h> /*Для Linux и Windows*/
@@ -7,30 +8,36 @@
 #include <GLUT/GLUT.h> /*Для Mac OS*/
 #endif
 
+namespace {
+    constexpr auto ResolutionX = 800;
+    constexpr auto ResolutionY = 800;
+    constexpr auto CellNumberX = 100;
+    constexpr auto CellNumberY = 100;
+    constexpr auto TimeDelay = 100;
 
-#define X_RES 800
-#define Y_RES 800
-#define X_N 100
-#define Y_N 100
-#define TIME_DELAY 100
+    constexpr auto PxLineX = ResolutionX / CellNumberX;
+    constexpr auto PxLineY = ResolutionY / CellNumberY;
 
-typedef int (*act_t)(void *, void *, int self_x, int self_y);
+    unsigned char Start = 0;
+}// namespace
 
-struct __cell_t {
+struct life_map_t;
+
+typedef int (*act_t)(life_map_t *, life_map_t *, int self_x, int self_y);
+
+struct cell_t {
     act_t act;
     int pow;
 };
 
-typedef struct __cell_t cell_t;
-
-typedef struct {
-    cell_t cell[X_N][Y_N];
+struct life_map_t {
+    cell_t cell[CellNumberX][CellNumberY];
     int max_x;
     int max_y;
     int impression;
-} life_map_t;
+};
 
-void life_init(life_map_t *map, act_t act, int pow, int impression) {
+void lifeInit(life_map_t *map, act_t act, int pow, int impression) {
     int i = 0, j = 0;
 
     map->max_x = sizeof(map->cell) / sizeof(map->cell[0]);
@@ -38,47 +45,40 @@ void life_init(life_map_t *map, act_t act, int pow, int impression) {
 
     map->impression = impression;
 
-    for (j = 0; j < Y_N; j++)
-        for (i = 0; i < X_N; i++) {
+    for (j = 0; j < CellNumberY; j++)
+        for (i = 0; i < CellNumberX; i++) {
             map->cell[i][j].act = act;
             map->cell[i][j].pow = pow;
         }
 }
 
-void life_origin() {
+void lifeOrigin() {
 }
 
-void life_quant(life_map_t *map_in, life_map_t *map_out) {
-    int i = 0, j = 0;
-    for (j = 0; j < Y_N; j++)
-        for (i = 0; i < X_N; i++) {
-            //printf("Quant pecessing: %d %d\n", i,j);
-            map_in->cell[i][j].act((void *) map_in, (void *) map_out, i, j);
+void lifeQuant(life_map_t *map_in, life_map_t *map_out) {
+    for (int j = 0; j < CellNumberY; j++)
+        for (int i = 0; i < CellNumberX; i++) {
+            map_in->cell[i][j].act(map_in, map_out, i, j);
         }
 }
 
-int life_act(void *mapin_v, void *mapout_v, int self_x, int self_y) {
-    life_map_t *map_in = (life_map_t *) mapin_v;
-    life_map_t *map_out = (life_map_t *) mapout_v;
+int lifeAct(life_map_t *map_in, life_map_t *map_out, int self_x, int self_y) {
 
     int sum = 0;
-    int i, j;
-    int rx, ry;
-    for (j = -1; j <= 1; j++)
-        for (i = -1; i <= 1; i++) {
+    for (int j = -1; j <= 1; j++)
+        for (int i = -1; i <= 1; i++) {
             if (i == 0 && j == 0) {
 
             } else {
-                rx = self_x + i;
-                ry = self_y + j;
-                //printf("Life act rx ry %d %d\n", rx,ry);
+                int rx = self_x + i;
+                int ry = self_y + j;
                 if (rx >= 0 && rx < map_in->max_x && ry >= 0 && ry < map_in->max_y)
                     sum += map_in->cell[rx][ry].pow;
                 else
                     sum += map_in->impression;
             }
         }
-    //printf("sum  %d \n", sum);
+
     if (map_in->cell[self_x][self_y].pow > 0) {   // Если клетка живая
         if (sum == 2 || sum == 3)                 // Если есть 2 или 3 живые соседки
             map_out->cell[self_x][self_y].pow = 1;// то клетка продолжает жить
@@ -86,7 +86,7 @@ int life_act(void *mapin_v, void *mapout_v, int self_x, int self_y) {
             map_out->cell[self_x][self_y].pow = 0;// иначе умирает
     } else {                                      // Если пусто
         if (sum == 3)                             // Если есть ровно 3 живые соседки
-            map_out->cell[self_x][self_y].pow = 1;//зарождается жизнь в клетке
+            map_out->cell[self_x][self_y].pow = 1;// зарождается жизнь в клетке
         else
             map_out->cell[self_x][self_y].pow = 0;
     }
@@ -98,20 +98,21 @@ void reshape(int w, int h);
 void display();
 void keyPressed(unsigned char key, int x, int y);
 void mouseEvent(int button, int state, int x, int y);
-void display_life_map(life_map_t *map);
+void displayLifeMap(life_map_t *map);
+void displayNet();
 void timerEvent(int value);
 
-life_map_t __one_map;
-life_map_t __second_map;
+life_map_t inMap;
+life_map_t outMap;
 
 int main(int argc, char *argv[]) {
-    life_init(&__one_map, life_act, 0, 0);
-    memcpy(&__second_map, &__one_map, sizeof(__one_map));
+    lifeInit(&inMap, lifeAct, 0, 0);
+    std::memcpy(&outMap, &inMap, sizeof(inMap));
 
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA); /*Включаем двойную буферизацию и четырехкомпонентный цвет*/
 
-    glutInitWindowSize(X_RES, Y_RES);
+    glutInitWindowSize(ResolutionX, ResolutionY);
     glutCreateWindow("OpenGL Life Game");
 
     glutReshapeFunc(reshape);
@@ -139,90 +140,81 @@ void reshape(int w, int h) {
 void display() {
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glBegin(GL_LINES);
-    int i;
-    glColor3f(1.0, 0.0, 0.0);
-    glVertex2i(0, 0);
-    glVertex2i(X_RES, 0);
-
-    glVertex2i(X_RES, 0);
-    glVertex2i(X_RES, Y_RES);
-
-    glVertex2i(X_RES, Y_RES);
-    glVertex2i(0, Y_RES);
-
-    glVertex2i(0, Y_RES);
-    glVertex2i(0, 0);
-
-    glColor3f(0.2, 0.2, 0.2);
-
-    for (i = 0; i < X_RES; i += X_RES / X_N) {
-
-        glVertex2i(i, 0);
-        //glColor3f(0.2, 0.2, 0.2);
-        glVertex2i(i, Y_RES);
-    }
-
-    for (i = 0; i < Y_RES; i += Y_RES / Y_N) {
-        //glColor3f(1.0, 1.0, 1.0);
-        glVertex2i(0, i);
-        //glColor3f(1.0, 1.0, 1.0);
-        glVertex2i(X_RES, i);
-    }
-    /*glColor3f(0.0, 1.0, 0.0);
-                glVertex2i(550, 150);
-                glColor3f(1.0, 0.0, 0.0);
-                glVertex2i(550, 450);*/
-    glEnd();
-    display_life_map(&__one_map);
+    displayNet();
+    displayLifeMap(&inMap);
     glutSwapBuffers();
 }
 
-unsigned char __start = 0;
+void keyPressed(unsigned char key, int, int) {
 
-void keyPressed(unsigned char key, int x, int y) {
+    std::cout << "keyPressed(): " << key << std::endl;
 
-    printf("Hello KBD!!! Mouse (%d, %d)\n", x, y);
-
-    __start ^= 1;
+    Start ^= 1;
     glutTimerFunc(500, timerEvent, 0);
 }
 
 void mouseEvent(int button, int state,
                 int x, int y) {
-    int nx, ny;
-    life_map_t *map = &__one_map;
-    //printf("Hello Mouse!!! Mouse (%d, %d, %d, %d)\n",button, state, x,y);
+
     if (state == GLUT_UP && button == GLUT_LEFT_BUTTON) {
-        nx = x / (X_RES / X_N);
-        ny = y / (Y_RES / Y_N);
-        printf("Hello Mouse!!! Mouse (%d, %d)\n", nx, ny);
-        if (nx < map->max_x && ny < map->max_y) map->cell[nx][map->max_y - 1 - ny].pow ^= 1;
+        auto nx = x / (PxLineX);
+        auto ny = y / (PxLineY);
+        std::cout << "Mouse event ( " << nx << " " << ny << ")" << std::endl;
+        if (nx < inMap.max_x && ny < inMap.max_y) inMap.cell[nx][inMap.max_y - 1 - ny].pow ^= 1;
         display();
     }
 }
 
-void display_life_map(life_map_t *map) {
-    int i = 0, j = 0;
-    for (j = 0; j < map->max_y; j++)
-        for (i = 0; i < map->max_x; i++) {
+void displayNet() {
+    glBegin(GL_LINES);
+    glColor3f(1.0, 0.0, 0.0);
+    glVertex2i(0, 0);
+    glVertex2i(ResolutionX, 0);
+
+    glVertex2i(ResolutionX, 0);
+    glVertex2i(ResolutionX, ResolutionY);
+
+    glVertex2i(ResolutionX, ResolutionY);
+    glVertex2i(0, ResolutionY);
+
+    glVertex2i(0, ResolutionY);
+    glVertex2i(0, 0);
+
+    glColor3f(0.2, 0.2, 0.2);
+
+    for (int i = 0; i < ResolutionX; i += PxLineX) {
+
+        glVertex2i(i, 0);
+        glVertex2i(i, ResolutionY);
+    }
+
+    for (int i = 0; i < ResolutionY; i += PxLineY) {
+        glVertex2i(0, i);
+        glVertex2i(ResolutionX, i);
+    }
+    glEnd();
+}
+
+void displayLifeMap(life_map_t *map) {
+    for (int j = 0; j < map->max_y; j++)
+        for (int i = 0; i < map->max_x; i++) {
             if (map->cell[i][j].pow > 0) {
                 glBegin(GL_QUADS);
                 glColor3f(1.0, 1.0, 1.0);
-                glVertex2i(i * X_RES / X_N, j * Y_RES / Y_N);
-                glVertex2i((i + 1) * X_RES / X_N, j * Y_RES / Y_N);
-                glVertex2i((i + 1) * X_RES / X_N, (j + 1) * Y_RES / Y_N);
-                glVertex2i(i * X_RES / X_N, (j + 1) * Y_RES / Y_N);
+                glVertex2i(i * PxLineX, j * PxLineY);
+                glVertex2i((i + 1) * PxLineX, j * PxLineY);
+                glVertex2i((i + 1) * PxLineX, (j + 1) * PxLineY);
+                glVertex2i(i * PxLineX, (j + 1) * PxLineY);
                 glEnd();
             }
         }
 }
 
 void timerEvent(int value) {
-    if (__start) {
-        life_quant(&__one_map, &__second_map);
-        memcpy(&__one_map, &__second_map, sizeof(__one_map));
+    if (Start) {
+        lifeQuant(&inMap, &outMap);
+        memcpy(&inMap, &outMap, sizeof(inMap));
         display();
-        glutTimerFunc(TIME_DELAY, timerEvent, 1);
+        glutTimerFunc(TimeDelay, timerEvent, 1);
     }
 }

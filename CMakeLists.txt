@@ -8,7 +8,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 find_package(OpenGL REQUIRED COMPONENTS OpenGL)
 find_package(GLUT REQUIRED)
 
-
 add_compile_options(-Wall -Werror -pedantic)
 
 add_executable(${PROJECT_NAME} main.cpp)
