@@ -35,9 +35,27 @@ struct LifeMap {
     int max_x = 0;
     int max_y = 0;
     int impression = 0;
+
+    [[nodiscard]] int NeighborsSum(int x, int y) const {
+        int sum = 0;
+        for (int j = -1; j <= 1; j++) {
+            for (int i = -1; i <= 1; i++) {
+                if (i == 0 && j == 0) {
+                } else {
+                    int rx = x + i;
+                    int ry = y + j;
+                    if (rx >= 0 && rx < max_x && ry >= 0 && ry < max_y)
+                        sum += cell[rx][ry].pow;
+                    else
+                        sum += impression;
+                }
+            }
+        }
+        return sum;
+    }
 };
 
-void lifeInit(LifeMap *map, const ActionFunc& actFn, int pow, int impression) {
+void lifeInit(LifeMap* map, const ActionFunc& actFn, int pow, int impression) {
     map->max_x = sizeof(map->cell) / sizeof(map->cell[0]);
     map->max_y = sizeof(map->cell[0]) / sizeof(map->cell[0][0]);
 
@@ -61,29 +79,14 @@ void lifeQuant(const LifeMap& map_in, LifeMap& map_out) {
 }
 
 int lifeAct(const LifeMap& map_in, LifeMap& map_out, int self_x, int self_y) {
-
-    int sum = 0;
-    for (int j = -1; j <= 1; j++)
-        for (int i = -1; i <= 1; i++) {
-            if (i == 0 && j == 0) {
-
-            } else {
-                int rx = self_x + i;
-                int ry = self_y + j;
-                if (rx >= 0 && rx < map_in.max_x && ry >= 0 && ry < map_in.max_y)
-                    sum += map_in.cell[rx][ry].pow;
-                else
-                    sum += map_in.impression;
-            }
-        }
-
+    auto sum = map_in.NeighborsSum(self_x, self_y);
     if (map_in.cell[self_x][self_y].pow > 0) {   // Если клетка живая
-        if (sum == 2 || sum == 3)                 // Если есть 2 или 3 живые соседки
+        if (sum == 2 || sum == 3)                // Если есть 2 или 3 живые соседки
             map_out.cell[self_x][self_y].pow = 1;// то клетка продолжает жить
         else
             map_out.cell[self_x][self_y].pow = 0;// иначе умирает
-    } else {                                      // Если пусто
-        if (sum == 3)                             // Если есть ровно 3 живые соседки
+    } else {                                     // Если пусто
+        if (sum == 3)                            // Если есть ровно 3 живые соседки
             map_out.cell[self_x][self_y].pow = 1;// зарождается жизнь в клетке
         else
             map_out.cell[self_x][self_y].pow = 0;
@@ -103,7 +106,7 @@ void timerEvent(int value);
 LifeMap inMap;
 LifeMap outMap;
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
     lifeInit(&inMap, lifeAct, 0, 0);
     outMap = inMap;
 
@@ -144,7 +147,6 @@ void display() {
 }
 
 void keyPressed(unsigned char key, int, int) {
-
     std::cout << "keyPressed(): " << key << std::endl;
 
     Start ^= 1;
@@ -153,7 +155,6 @@ void keyPressed(unsigned char key, int, int) {
 
 void mouseEvent(int button, int state,
                 int x, int y) {
-
     if (state == GLUT_UP && button == GLUT_LEFT_BUTTON) {
         auto nx = x / (PxLineX);
         auto ny = y / (PxLineY);
@@ -181,7 +182,6 @@ void displayNet() {
     glColor3f(0.2, 0.2, 0.2);
 
     for (int i = 0; i < ResolutionX; i += PxLineX) {
-
         glVertex2i(i, 0);
         glVertex2i(i, ResolutionY);
     }
