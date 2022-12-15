@@ -149,19 +149,17 @@ void displayNet() {
 }
 
 void displayLifeMap(const Life& map) {
-    for (uint32_t j = 0; j < map.m_dimension.Y; j++) {
-        for (uint32_t i = 0; i < map.m_dimension.X; i++) {
-            if (map.cellMatrix.Get({i, j}).pow > 0) {
-                glBegin(GL_QUADS);
-                glColor3f(1.0, 1.0, 1.0);
-                glVertex2i(i * PxLineX, j * PxLineY);
-                glVertex2i((i + 1) * PxLineX, j * PxLineY);
-                glVertex2i((i + 1) * PxLineX, (j + 1) * PxLineY);
-                glVertex2i(i * PxLineX, (j + 1) * PxLineY);
-                glEnd();
-            }
+    life->cellMatrix.ForEach([](const Coord& c, const Cell& item) {
+        if (item.pow > 0) {
+            glBegin(GL_QUADS);
+            glColor3f(1.0, 1.0, 1.0);
+            glVertex2i(c.X * PxLineX, c.Y * PxLineY);
+            glVertex2i((c.X + 1) * PxLineX, c.Y * PxLineY);
+            glVertex2i((c.X + 1) * PxLineX, (c.Y + 1) * PxLineY);
+            glVertex2i(c.X * PxLineX, (c.Y + 1) * PxLineY);
+            glEnd();
         }
-    }
+    });
 }
 
 void timerEvent(int) {
