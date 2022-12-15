@@ -1,6 +1,5 @@
 #include "coord.h"
 #include "matrix.h"
-#include <cstring>
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -25,9 +24,6 @@ namespace {
 
     bool Start = false;
 }// namespace
-
-class LifeMap;
-class Cell;
 
 class Cell {
 public:
@@ -71,8 +67,7 @@ class LifeMap {
 public:
     CellMatrix cellMatrix;
     FieldMatrix fieldMatrix;
-    uint32_t max_x = 0;
-    uint32_t max_y = 0;
+    Coord m_dimension;
 
     LifeMap() = default;
 
@@ -86,8 +81,7 @@ public:
                 cellMatrix.Get(Coord{i, j}).pow = pow;
             }
         }
-        max_x = dimension.X;
-        max_y = dimension.Y;
+        m_dimension = dimension;
     }
 
     void lifeQuant() {
@@ -102,18 +96,6 @@ public:
         cellMatrix = out;
     }
 };
-
-void lifeOrigin() {
-}
-
-void lifeQuant(const LifeMap& map_in, LifeMap& map_out) {
-    for (uint32_t j = 0; j < CellNumberY; j++) {
-        for (uint32_t i = 0; i < CellNumberX; i++) {
-            Coord c{i, j};
-            map_out.cellMatrix.Get(c) = map_in.fieldMatrix.Get(c)(map_in.cellMatrix, c);
-        }
-    }
-}
 
 Cell lifeAct(const CellMatrix& cellMatrix, const Coord& selfCoord) {
     Cell cell = cellMatrix.Get(selfCoord);
@@ -201,8 +183,8 @@ void mouseEvent(int button, int state,
         uint32_t nx = x / (PxLineX);
         uint32_t ny = y / (PxLineY);
         std::cout << "Mouse event ( " << nx << " " << ny << ")" << std::endl;
-        if (nx < inMap->max_x && ny < inMap->max_y) {
-            inMap->cellMatrix.Get({nx, inMap->max_y - 1 - ny}).pow ^= 1;
+        if (nx < inMap->m_dimension.X && ny < inMap->m_dimension.Y) {
+            inMap->cellMatrix.Get({nx, inMap->m_dimension.Y - 1 - ny}).pow ^= 1;
         }
         display();
     }
@@ -238,8 +220,8 @@ void displayNet() {
 }
 
 void displayLifeMap(const LifeMap& map) {
-    for (uint32_t j = 0; j < map.max_y; j++) {
-        for (uint32_t i = 0; i < map.max_x; i++) {
+    for (uint32_t j = 0; j < map.m_dimension.Y; j++) {
+        for (uint32_t i = 0; i < map.m_dimension.X; i++) {
             if (map.cellMatrix.Get({i, j}).pow > 0) {
                 glBegin(GL_QUADS);
                 glColor3f(1.0, 1.0, 1.0);
@@ -253,7 +235,7 @@ void displayLifeMap(const LifeMap& map) {
     }
 }
 
-void timerEvent(int value) {
+void timerEvent(int) {
     if (Start) {
         inMap->lifeQuant();
         display();
