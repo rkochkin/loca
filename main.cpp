@@ -2,8 +2,6 @@
 #include "coord.h"
 #include "field.h"
 #include "life.h"
-#include "matrix.h"
-#include <functional>
 #include <iostream>
 #include <memory>
 #include <vector>
