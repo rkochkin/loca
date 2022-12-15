@@ -1,4 +1,7 @@
+#include "cell.h"
 #include "coord.h"
+#include "field.h"
+#include "life.h"
 #include "matrix.h"
 #include <functional>
 #include <iostream>
@@ -25,78 +28,6 @@ namespace {
     bool Start = false;
 }// namespace
 
-class Cell {
-public:
-    int pow = 0;
-};
-
-class CellMatrix : public Matrix<Cell> {
-public:
-    CellMatrix() = default;
-    explicit CellMatrix(const Coord& c) : Matrix<Cell>(c) {
-    }
-    [[nodiscard]] uint32_t NeighborsSum(const Coord& c) const {
-        uint32_t sum = 0;
-        auto size = Size();
-        for (int j = -1; j <= 1; j++) {
-            for (int i = -1; i <= 1; i++) {
-                if (i == 0 && j == 0) {
-                } else {
-                    int rx = c.X + i;
-                    int ry = c.Y + j;
-                    if (rx >= 0 && rx < static_cast<int32_t>(size.X) && ry >= 0 && ry < static_cast<int32_t>(size.Y)) {
-                        sum += Get({static_cast<uint32_t>(rx), static_cast<uint32_t>(ry)}).pow;
-                    }
-                }
-            }
-        }
-        return sum;
-    }
-};
-
-using ActionFunc = std::function<Cell(const CellMatrix&, const Coord& c)>;
-
-class FieldMatrix : public Matrix<ActionFunc> {
-public:
-    FieldMatrix() = default;
-    explicit FieldMatrix(const Coord& c) : Matrix<ActionFunc>(c) {
-    }
-};
-
-class LifeMap {
-public:
-    CellMatrix cellMatrix;
-    FieldMatrix fieldMatrix;
-    Coord m_dimension;
-
-    LifeMap() = default;
-
-    LifeMap(const Coord& dimension, const ActionFunc& actFn, int pow = 0) {
-        cellMatrix = CellMatrix{dimension};
-        fieldMatrix = FieldMatrix{dimension};
-
-        for (uint32_t j = 0; j < CellNumberY; j++) {
-            for (uint32_t i = 0; i < CellNumberX; i++) {
-                fieldMatrix.Get(Coord{i, j}) = actFn;
-                cellMatrix.Get(Coord{i, j}).pow = pow;
-            }
-        }
-        m_dimension = dimension;
-    }
-
-    void lifeQuant() {
-        CellMatrix out{cellMatrix};
-        auto s = cellMatrix.Size();
-        for (uint32_t j = 0; j < s.Y; j++) {
-            for (uint32_t i = 0; i < s.X; i++) {
-                Coord c{i, j};
-                out.Get(c) = fieldMatrix.Get(c)(cellMatrix, c);
-            }
-        }
-        cellMatrix = out;
-    }
-};
-
 Cell lifeAct(const CellMatrix& cellMatrix, const Coord& selfCoord) {
     Cell cell = cellMatrix.Get(selfCoord);
     auto sum = cellMatrix.NeighborsSum(selfCoord);
@@ -119,15 +50,15 @@ void reshape(int w, int h);
 void display();
 void keyPressed(unsigned char key, int x, int y);
 void mouseEvent(int button, int state, int x, int y);
-void displayLifeMap(const LifeMap& map);
+void displayLifeMap(const Life& map);
 void displayNet();
 void timerEvent(int value);
 
-std::unique_ptr<LifeMap> inMap;
+std::unique_ptr<Life> life;
 
 int main(int argc, char* argv[]) {
     try {
-        inMap = std::make_unique<LifeMap>(Coord{CellNumberX, CellNumberY}, lifeAct, 0);
+        life = std::make_unique<Life>(Coord{CellNumberX, CellNumberY}, lifeAct, 0);
 
         glutInit(&argc, argv);
         glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA); /*Включаем двойную буферизацию и четырехкомпонентный цвет*/
@@ -165,7 +96,7 @@ void display() {
     glClear(GL_COLOR_BUFFER_BIT);
 
     displayNet();
-    displayLifeMap(*inMap);
+    displayLifeMap(*life);
     glutSwapBuffers();
 }
 
@@ -183,8 +114,8 @@ void mouseEvent(int button, int state,
         uint32_t nx = x / (PxLineX);
         uint32_t ny = y / (PxLineY);
         std::cout << "Mouse event ( " << nx << " " << ny << ")" << std::endl;
-        if (nx < inMap->m_dimension.X && ny < inMap->m_dimension.Y) {
-            inMap->cellMatrix.Get({nx, inMap->m_dimension.Y - 1 - ny}).pow ^= 1;
+        if (nx < life->m_dimension.X && ny < life->m_dimension.Y) {
+            life->cellMatrix.Get({nx, life->m_dimension.Y - 1 - ny}).pow ^= 1;
         }
         display();
     }
@@ -219,7 +150,7 @@ void displayNet() {
     glEnd();
 }
 
-void displayLifeMap(const LifeMap& map) {
+void displayLifeMap(const Life& map) {
     for (uint32_t j = 0; j < map.m_dimension.Y; j++) {
         for (uint32_t i = 0; i < map.m_dimension.X; i++) {
             if (map.cellMatrix.Get({i, j}).pow > 0) {
@@ -237,7 +168,7 @@ void displayLifeMap(const LifeMap& map) {
 
 void timerEvent(int) {
     if (Start) {
-        inMap->lifeQuant();
+        life->Quant();
         display();
         glutTimerFunc(TimeDelay, timerEvent, 1);
     }
