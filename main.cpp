@@ -1,6 +1,7 @@
 #include <cstring>
 #include <functional>
 #include <iostream>
+#include <memory>
 
 #if defined(linux) || defined(_WIN32)
 #include <GL/glut.h> /*Для Linux и Windows*/
@@ -9,6 +10,7 @@
 #endif
 
 namespace {
+    constexpr auto GameTitle = "OpenGL Life Game";
     constexpr auto ResolutionX = 800;
     constexpr auto ResolutionY = 800;
     constexpr auto CellNumberX = 100;
@@ -18,12 +20,13 @@ namespace {
     constexpr auto PxLineX = ResolutionX / CellNumberX;
     constexpr auto PxLineY = ResolutionY / CellNumberY;
 
-    unsigned char Start = 0;
+    bool Start = false;
 }// namespace
 
 struct LifeMap;
+struct Cell;
 
-using ActionFunc = std::function<int(const LifeMap&, LifeMap&, int self_x, int self_y)>;
+using ActionFunc = std::function<Cell(const LifeMap&, int self_x, int self_y)>;
 
 struct Cell {
     ActionFunc act;
@@ -35,6 +38,19 @@ struct LifeMap {
     int max_x = 0;
     int max_y = 0;
     int impression = 0;
+
+    LifeMap() = default;
+
+    explicit LifeMap(const ActionFunc& actFn, int pow = 0, int impression = 0) {
+        for (int j = 0; j < CellNumberY; j++) {
+            for (int i = 0; i < CellNumberX; i++) {
+                cell[i][j].act = actFn;
+                cell[i][j].pow = pow;
+            }
+        }
+        max_x = CellNumberX;
+        max_y = CellNumberY;
+    }
 
     [[nodiscard]] int NeighborsSum(int x, int y) const {
         int sum = 0;
@@ -55,43 +71,31 @@ struct LifeMap {
     }
 };
 
-void lifeInit(LifeMap* map, const ActionFunc& actFn, int pow, int impression) {
-    map->max_x = sizeof(map->cell) / sizeof(map->cell[0]);
-    map->max_y = sizeof(map->cell[0]) / sizeof(map->cell[0][0]);
-
-    map->impression = impression;
-
-    for (int j = 0; j < CellNumberY; j++)
-        for (int i = 0; i < CellNumberX; i++) {
-            map->cell[i][j].act = actFn;
-            map->cell[i][j].pow = pow;
-        }
-}
-
 void lifeOrigin() {
 }
 
 void lifeQuant(const LifeMap& map_in, LifeMap& map_out) {
     for (int j = 0; j < CellNumberY; j++)
         for (int i = 0; i < CellNumberX; i++) {
-            map_in.cell[i][j].act(map_in, map_out, i, j);
+            map_out.cell[i][j] = map_in.cell[i][j].act(map_in, i, j);
         }
 }
 
-int lifeAct(const LifeMap& map_in, LifeMap& map_out, int self_x, int self_y) {
+Cell lifeAct(const LifeMap& map_in, int self_x, int self_y) {
+    Cell cell = map_in.cell[self_x][self_y];
     auto sum = map_in.NeighborsSum(self_x, self_y);
-    if (map_in.cell[self_x][self_y].pow > 0) {   // Если клетка живая
-        if (sum == 2 || sum == 3)                // Если есть 2 или 3 живые соседки
-            map_out.cell[self_x][self_y].pow = 1;// то клетка продолжает жить
+    if (map_in.cell[self_x][self_y].pow > 0) {// Если клетка живая
+        if (sum == 2 || sum == 3)             // Если есть 2 или 3 живые соседки
+            cell.pow = 1;                     // то клетка продолжает жить
         else
-            map_out.cell[self_x][self_y].pow = 0;// иначе умирает
-    } else {                                     // Если пусто
-        if (sum == 3)                            // Если есть ровно 3 живые соседки
-            map_out.cell[self_x][self_y].pow = 1;// зарождается жизнь в клетке
+            cell.pow = 0;// иначе умирает
+    } else {             // Если пусто
+        if (sum == 3)    // Если есть ровно 3 живые соседки
+            cell.pow = 1;// зарождается жизнь в клетке
         else
-            map_out.cell[self_x][self_y].pow = 0;
+            cell.pow = 0;
     }
-    return 0;
+    return cell;
 }
 
 
@@ -103,24 +107,30 @@ void displayLifeMap(const LifeMap& map);
 void displayNet();
 void timerEvent(int value);
 
-LifeMap inMap;
-LifeMap outMap;
+std::unique_ptr<LifeMap> inMap;
+std::unique_ptr<LifeMap> outMap;
 
 int main(int argc, char* argv[]) {
-    lifeInit(&inMap, lifeAct, 0, 0);
-    outMap = inMap;
+    try {
+        inMap = std::make_unique<LifeMap>(lifeAct, 0, 0);
+        outMap = std::make_unique<LifeMap>();
+        *outMap = *inMap;
 
-    glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA); /*Включаем двойную буферизацию и четырехкомпонентный цвет*/
+        glutInit(&argc, argv);
+        glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA); /*Включаем двойную буферизацию и четырехкомпонентный цвет*/
+        glutInitWindowSize(ResolutionX, ResolutionY);
+        glutCreateWindow("OpenGL Life Game");
 
-    glutInitWindowSize(ResolutionX, ResolutionY);
-    glutCreateWindow("OpenGL Life Game");
+        glutReshapeFunc(reshape);
+        glutDisplayFunc(display);
+        glutKeyboardFunc(keyPressed);
+        glutMouseFunc(mouseEvent);
 
-    glutReshapeFunc(reshape);
-    glutDisplayFunc(display);
-    glutKeyboardFunc(keyPressed);
-    glutMouseFunc(mouseEvent);
-    glutMainLoop();
+
+        glutMainLoop();
+    } catch (std::exception& e) {
+        std::cerr << "ERR: " << e.what();
+    }
 
     return 0;
 }
@@ -142,7 +152,7 @@ void display() {
     glClear(GL_COLOR_BUFFER_BIT);
 
     displayNet();
-    displayLifeMap(inMap);
+    displayLifeMap(*inMap);
     glutSwapBuffers();
 }
 
@@ -151,6 +161,7 @@ void keyPressed(unsigned char key, int, int) {
 
     Start ^= 1;
     glutTimerFunc(500, timerEvent, 0);
+    glutSetWindowTitle((std::string(GameTitle) + (Start ? " Start" : " Stop")).c_str());
 }
 
 void mouseEvent(int button, int state,
@@ -159,7 +170,9 @@ void mouseEvent(int button, int state,
         auto nx = x / (PxLineX);
         auto ny = y / (PxLineY);
         std::cout << "Mouse event ( " << nx << " " << ny << ")" << std::endl;
-        if (nx < inMap.max_x && ny < inMap.max_y) inMap.cell[nx][inMap.max_y - 1 - ny].pow ^= 1;
+        if (nx < inMap->max_x && ny < inMap->max_y) {
+            inMap->cell[nx][inMap->max_y - 1 - ny].pow ^= 1;
+        }
         display();
     }
 }
@@ -194,7 +207,7 @@ void displayNet() {
 }
 
 void displayLifeMap(const LifeMap& map) {
-    for (int j = 0; j < map.max_y; j++)
+    for (int j = 0; j < map.max_y; j++) {
         for (int i = 0; i < map.max_x; i++) {
             if (map.cell[i][j].pow > 0) {
                 glBegin(GL_QUADS);
@@ -206,12 +219,13 @@ void displayLifeMap(const LifeMap& map) {
                 glEnd();
             }
         }
+    }
 }
 
 void timerEvent(int value) {
     if (Start) {
-        lifeQuant(inMap, outMap);
-        inMap = outMap;
+        lifeQuant(*inMap, *outMap);
+        *inMap = *outMap;
         display();
         glutTimerFunc(TimeDelay, timerEvent, 1);
     }
