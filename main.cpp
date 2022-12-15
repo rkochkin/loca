@@ -24,17 +24,28 @@ namespace {
 }// namespace
 
 struct LifeMap;
-struct Cell;
+class Cell;
 
 using ActionFunc = std::function<Cell(const LifeMap&, int self_x, int self_y)>;
 
-struct Cell {
-    ActionFunc act;
+class Cell {
+public:
     int pow = 0;
 };
 
-struct LifeMap {
+class CellMatrix {
+public:
     Cell cell[CellNumberX][CellNumberY];
+};
+
+class FieldMatrix {
+public:
+    ActionFunc act[CellNumberX][CellNumberY];
+};
+
+struct LifeMap {
+    CellMatrix cells;
+    FieldMatrix field;
     int max_x = 0;
     int max_y = 0;
     int impression = 0;
@@ -44,8 +55,8 @@ struct LifeMap {
     explicit LifeMap(const ActionFunc& actFn, int pow = 0, int impression = 0) {
         for (int j = 0; j < CellNumberY; j++) {
             for (int i = 0; i < CellNumberX; i++) {
-                cell[i][j].act = actFn;
-                cell[i][j].pow = pow;
+                field.act[i][j] = actFn;
+                cells.cell[i][j].pow = pow;
             }
         }
         max_x = CellNumberX;
@@ -61,7 +72,7 @@ struct LifeMap {
                     int rx = x + i;
                     int ry = y + j;
                     if (rx >= 0 && rx < max_x && ry >= 0 && ry < max_y)
-                        sum += cell[rx][ry].pow;
+                        sum += cells.cell[rx][ry].pow;
                     else
                         sum += impression;
                 }
@@ -77,14 +88,14 @@ void lifeOrigin() {
 void lifeQuant(const LifeMap& map_in, LifeMap& map_out) {
     for (int j = 0; j < CellNumberY; j++)
         for (int i = 0; i < CellNumberX; i++) {
-            map_out.cell[i][j] = map_in.cell[i][j].act(map_in, i, j);
+            map_out.cells.cell[i][j] = map_in.field.act[i][j](map_in, i, j);
         }
 }
 
 Cell lifeAct(const LifeMap& map_in, int self_x, int self_y) {
-    Cell cell = map_in.cell[self_x][self_y];
+    Cell cell = map_in.cells.cell[self_x][self_y];
     auto sum = map_in.NeighborsSum(self_x, self_y);
-    if (map_in.cell[self_x][self_y].pow > 0) {// Если клетка живая
+    if (map_in.cells.cell[self_x][self_y].pow > 0) {// Если клетка живая
         if (sum == 2 || sum == 3)             // Если есть 2 или 3 живые соседки
             cell.pow = 1;                     // то клетка продолжает жить
         else
@@ -171,7 +182,7 @@ void mouseEvent(int button, int state,
         auto ny = y / (PxLineY);
         std::cout << "Mouse event ( " << nx << " " << ny << ")" << std::endl;
         if (nx < inMap->max_x && ny < inMap->max_y) {
-            inMap->cell[nx][inMap->max_y - 1 - ny].pow ^= 1;
+            inMap->cells.cell[nx][inMap->max_y - 1 - ny].pow ^= 1;
         }
         display();
     }
@@ -209,7 +220,7 @@ void displayNet() {
 void displayLifeMap(const LifeMap& map) {
     for (int j = 0; j < map.max_y; j++) {
         for (int i = 0; i < map.max_x; i++) {
-            if (map.cell[i][j].pow > 0) {
+            if (map.cells.cell[i][j].pow > 0) {
                 glBegin(GL_QUADS);
                 glColor3f(1.0, 1.0, 1.0);
                 glVertex2i(i * PxLineX, j * PxLineY);
