@@ -2,7 +2,9 @@
 #include <gtest/gtest.h>
 
 // Demonstrate some basic assertions.
-TEST(HelloTest, BasicAssertions) {
-    CellMatrix cellMatrix{{3,3}};
-    EXPECT_EQ(cellMatrix.NeighborsSum({1,1}),0);
+TEST(CellTest, NeighborsSum) {
+    CellMatrix cellMatrixEmpty{{3, 3}};
+    CellMatrix cellMatrixFull{{3, 3}, Cell{1}};
+    EXPECT_EQ(cellMatrixEmpty.NeighborsSum({1, 1}), 0);
+    EXPECT_EQ(cellMatrixFull.NeighborsSum({1, 1}), 8);
 }

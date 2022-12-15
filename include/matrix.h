@@ -9,9 +9,16 @@ template<typename T>
 class Matrix {
 public:
     Matrix() = default;
+
     explicit Matrix(const Coord& c) {
         for (uint32_t i = 0; i < c.Y; i++) {
             m_matrix.emplace_back(std::vector<T>(c.X));
+        }
+    }
+
+    explicit Matrix(const Coord& c, const T& value) {
+        for (uint32_t i = 0; i < c.Y; i++) {
+            m_matrix.emplace_back(std::vector<T>(c.X, value));
         }
     }
 

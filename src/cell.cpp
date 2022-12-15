@@ -3,6 +3,9 @@
 CellMatrix::CellMatrix(const Coord& c) : Matrix<Cell>(c) {
 }
 
+CellMatrix::CellMatrix(const Coord& c, const Cell& value) : Matrix<Cell>(c, value) {
+}
+
 uint32_t CellMatrix::NeighborsSum(const Coord& c) const {
     uint32_t sum = 0;
     auto size = Size();
