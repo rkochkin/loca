@@ -10,5 +10,6 @@ find_package(GLUT REQUIRED)
 
 add_compile_options(-Wall -Werror -pedantic)
 
+include_directories(${PROJECT_NAME} include)
 add_executable(${PROJECT_NAME} main.cpp)
 target_link_libraries(${PROJECT_NAME} OpenGL::GL GLUT::GLUT GLU)
