@@ -15,8 +15,11 @@ file(GLOB all_SRCS
         "${PROJECT_SOURCE_DIR}/src/*.c"
         )
 
+set(SRCS ${all_SRCS})
+list(FILTER SRCS EXCLUDE REGEX ".*_test\\.cpp$")
+
 include_directories(${PROJECT_NAME} include)
-add_executable(${PROJECT_NAME} main.cpp ${all_SRCS})
+add_executable(${PROJECT_NAME} main.cpp ${SRCS})
 target_link_libraries(${PROJECT_NAME} OpenGL::GL GLUT::GLUT GLU)
 
 ### Add Google test
