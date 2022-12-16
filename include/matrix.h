@@ -12,19 +12,19 @@ public:
     Matrix() = default;
 
     explicit Matrix(const Coord& c) {
-        for (uint32_t i = 0; i < c.X; i++) {
+        for (int32_t i = 0; i < c.X; i++) {
             m_matrix.emplace_back(std::vector<T>(c.Y));
         }
     }
 
     explicit Matrix(const Coord& c, const T& value) {
-        for (uint32_t i = 0; i < c.X; i++) {
+        for (int32_t i = 0; i < c.X; i++) {
             m_matrix.emplace_back(std::vector<T>(c.Y, value));
         }
     }
 
     [[nodiscard]] Coord Size() const {
-        return {static_cast<uint32_t>(m_matrix.size()), static_cast<uint32_t>(m_matrix.front().size())};
+        return {static_cast<int32_t>(m_matrix.size()), static_cast<int32_t>(m_matrix.front().size())};
     }
 
     [[nodiscard]] T& Get(const Coord& c) {
@@ -37,8 +37,8 @@ public:
 
     void ForEach(const std::function<void(const Coord& c, T& item)>& fn) {
         auto dimension = Size();
-        for (uint32_t j = 0; j < dimension.Y; j++) {
-            for (uint32_t i = 0; i < dimension.X; i++) {
+        for (int32_t j = 0; j < dimension.Y; j++) {
+            for (int32_t i = 0; i < dimension.X; i++) {
                 fn({i, j}, m_matrix[i][j]);
             }
         }
@@ -46,8 +46,8 @@ public:
 
     void ForEach(const std::function<void(const Coord& c, const T& item)>& fn) const {
         auto dimension = Size();
-        for (uint32_t j = 0; j < dimension.Y; j++) {
-            for (uint32_t i = 0; i < dimension.X; i++) {
+        for (int32_t j = 0; j < dimension.Y; j++) {
+            for (int32_t i = 0; i < dimension.X; i++) {
                 fn({i, j}, m_matrix[i][j]);
             }
         }

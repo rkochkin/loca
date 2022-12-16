@@ -4,26 +4,27 @@
 #include "life.h"
 #include <iostream>
 #include <memory>
+#include <options.h>
 #include <vector>
 
 #if defined(linux) || defined(_WIN32)
-#include <GL/glut.h> /*Для Linux и Windows*/
+    #include <GL/glut.h> /*Для Linux и Windows*/
 #else
-#include <GLUT/GLUT.h> /*Для Mac OS*/
+    #include <GLUT/GLUT.h> /*Для Mac OS*/
 #endif
 
 namespace {
     constexpr auto GameTitle = "OpenGL Life Game";
-    constexpr auto ResolutionX = 800;
-    constexpr auto ResolutionY = 800;
-    constexpr uint32_t CellNumberX = 100;
-    constexpr uint32_t CellNumberY = 100;
-    constexpr auto TimeDelay = 100;
 
-    constexpr auto PxLineX = ResolutionX / CellNumberX;
-    constexpr auto PxLineY = ResolutionY / CellNumberY;
+    double PxLineX = 0;
+    double PxLineY = 0;
 
     bool Start = false;
+    std::unique_ptr<Life> life;
+    Options options;
+
+    Coord windowResolution;
+    Coord cellNumber;
 }// namespace
 
 Cell lifeAct(const CellMatrix& cellMatrix, const Coord& selfCoord) {
@@ -52,15 +53,23 @@ void displayLifeMap(const Life& map);
 void displayNet();
 void timerEvent(int value);
 
-std::unique_ptr<Life> life;
-
 int main(int argc, char* argv[]) {
     try {
-        life = std::make_unique<Life>(Coord{CellNumberX, CellNumberY}, lifeAct, 0);
+        if (!options.LoadFromCmdLine(argc, argv)) {
+            std::cerr << "Invalid command line arguments";
+            return EXIT_FAILURE;
+        }
+        windowResolution = options.GetWindowResolution();
+        cellNumber = options.GetCellNumber();
+        PxLineX =  static_cast<float>(windowResolution.X) / cellNumber.X;
+        PxLineY = static_cast<float>(windowResolution.Y) / cellNumber.Y;
+
+        life = std::make_unique<Life>(options.GetCellNumber(), lifeAct, 0);
 
         glutInit(&argc, argv);
         glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA); /*Включаем двойную буферизацию и четырехкомпонентный цвет*/
-        glutInitWindowSize(ResolutionX, ResolutionY);
+
+        glutInitWindowSize(windowResolution.X, windowResolution.Y);
         glutCreateWindow("OpenGL Life Game");
 
         glutReshapeFunc(reshape);
@@ -68,18 +77,21 @@ int main(int argc, char* argv[]) {
         glutKeyboardFunc(keyPressed);
         glutMouseFunc(mouseEvent);
 
-
         glutMainLoop();
     } catch (std::exception& e) {
         std::cerr << "ERR: " << e.what();
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 
 void reshape(int w, int h) {
     glViewport(0, 0, w, h);
+    windowResolution.X = w;
+    windowResolution.Y = h;
+    PxLineX =  static_cast<float>(windowResolution.X) / cellNumber.X;
+    PxLineY = static_cast<float>(windowResolution.Y) / cellNumber.Y;
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -106,20 +118,22 @@ void keyPressed(unsigned char key, int, int) {
     glutSetWindowTitle((std::string(GameTitle) + (Start ? " Start" : " Stop")).c_str());
 }
 
-void mouseEvent(int button, int state,
-                int x, int y) {
+void mouseEvent(int button, int state, int x, int y) {
     if (state == GLUT_UP && button == GLUT_LEFT_BUTTON) {
-        uint32_t nx = x / (PxLineX);
-        uint32_t ny = y / (PxLineY);
+        const int32_t nx = x / (PxLineX);
+        const int32_t ny = y / (PxLineY);
         std::cout << "Mouse event ( " << nx << " " << ny << ")" << std::endl;
         if (nx < life->m_dimension.X && ny < life->m_dimension.Y) {
-            life->cellMatrix.Get({nx, life->m_dimension.Y - 1 - ny}).pow ^= 1;
+            life->cellMatrix.Get({nx, life->m_dimension.Y - ny-1}).pow ^= 1;
         }
         display();
     }
 }
 
 void displayNet() {
+    const auto ResolutionX = windowResolution.X;
+    const auto ResolutionY = windowResolution.Y;
+
     glBegin(GL_LINES);
     glColor3f(1.0, 0.0, 0.0);
     glVertex2i(0, 0);
@@ -136,20 +150,20 @@ void displayNet() {
 
     glColor3f(0.2, 0.2, 0.2);
 
-    for (int i = 0; i < ResolutionX; i += PxLineX) {
-        glVertex2i(i, 0);
-        glVertex2i(i, ResolutionY);
+    for (float i = 0; i < ResolutionX; i += PxLineX) {
+        glVertex2f(i, 0);
+        glVertex2f(i, ResolutionY);
     }
 
-    for (int i = 0; i < ResolutionY; i += PxLineY) {
-        glVertex2i(0, i);
-        glVertex2i(ResolutionX, i);
+    for (float i = 0; i < ResolutionY; i += PxLineY) {
+        glVertex2f(0, i);
+        glVertex2f(ResolutionX, i);
     }
     glEnd();
 }
 
 void displayLifeMap(const Life& map) {
-    life->cellMatrix.ForEach([](const Coord& c, const Cell& item) {
+    map.cellMatrix.ForEach([](const Coord& c, const Cell& item) {
         if (item.pow > 0) {
             glBegin(GL_QUADS);
             glColor3f(1.0, 1.0, 1.0);
@@ -166,6 +180,7 @@ void timerEvent(int) {
     if (Start) {
         life->Quant();
         display();
-        glutTimerFunc(TimeDelay, timerEvent, 1);
+        glutTimerFunc(std::chrono::duration_cast<std::chrono::milliseconds>(options.GetQuantTime()).count(), timerEvent,
+                      1);
     }
 }

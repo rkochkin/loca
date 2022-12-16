@@ -13,10 +13,10 @@ uint32_t CellMatrix::NeighborsSum(const Coord& c) const {
         for (int i = -1; i <= 1; i++) {
             if (i == 0 && j == 0) {
             } else {
-                int rx = c.X + i;
-                int ry = c.Y + j;
-                if (rx >= 0 && rx < static_cast<int32_t>(size.X) && ry >= 0 && ry < static_cast<int32_t>(size.Y)) {
-                    sum += Get({static_cast<uint32_t>(rx), static_cast<uint32_t>(ry)}).pow;
+                const int rx = c.X + i;
+                const int ry = c.Y + j;
+                if (rx >= 0 && rx < size.X && ry >= 0 && ry < size.Y) {
+                    sum += Get({rx, ry}).pow;
                 }
             }
         }
