@@ -61,7 +61,7 @@ int main(int argc, char* argv[]) {
         }
         windowResolution = options.GetWindowResolution();
         cellNumber = options.GetCellNumber();
-        PxLineX =  static_cast<float>(windowResolution.X) / cellNumber.X;
+        PxLineX = static_cast<float>(windowResolution.X) / cellNumber.X;
         PxLineY = static_cast<float>(windowResolution.Y) / cellNumber.Y;
 
         life = std::make_unique<Life>(options.GetCellNumber(), lifeAct, 0);
@@ -90,7 +90,7 @@ void reshape(int w, int h) {
     glViewport(0, 0, w, h);
     windowResolution.X = w;
     windowResolution.Y = h;
-    PxLineX =  static_cast<float>(windowResolution.X) / cellNumber.X;
+    PxLineX = static_cast<float>(windowResolution.X) / cellNumber.X;
     PxLineY = static_cast<float>(windowResolution.Y) / cellNumber.Y;
 
     glMatrixMode(GL_PROJECTION);
@@ -124,7 +124,7 @@ void mouseEvent(int button, int state, int x, int y) {
         const int32_t ny = y / (PxLineY);
         std::cout << "Mouse event ( " << nx << " " << ny << ")" << std::endl;
         if (nx < life->m_dimension.X && ny < life->m_dimension.Y) {
-            life->cellMatrix.Get({nx, life->m_dimension.Y - ny-1}).pow ^= 1;
+            life->cellMatrix.Get({nx, life->m_dimension.Y - ny - 1}).pow ^= 1;
         }
         display();
     }
