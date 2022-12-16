@@ -4,7 +4,7 @@
 
 struct Coord {
     Coord() = default;
-    Coord(uint32_t x, uint32_t y) : X(x), Y(y) {
+    Coord(int32_t x, int32_t y) : X(x), Y(y) {
     }
 
     bool operator<(const Coord &rhs) const {
@@ -18,6 +18,6 @@ struct Coord {
         return false;
     }
 
-    uint32_t X = 0;
-    uint32_t Y = 0;
+    int32_t X = 0;
+    int32_t Y = 0;
 };
