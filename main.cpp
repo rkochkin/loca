@@ -6,6 +6,7 @@
 #include <memory>
 #include <options.h>
 #include <vector>
+#include <atomic>
 
 #if defined(linux) || defined(_WIN32)
     #include <GL/glut.h> /*Для Linux и Windows*/
@@ -19,7 +20,7 @@ namespace {
     double PxLineX = 0;
     double PxLineY = 0;
 
-    bool Start = false;
+    std::atomic_int8_t Start{0};
     std::unique_ptr<Life> life;
     Options options;
 
@@ -113,9 +114,9 @@ void display() {
 void keyPressed(unsigned char key, int, int) {
     std::cout << "keyPressed(): " << key << std::endl;
 
-    Start ^= 1;
+    Start.fetch_xor(1);
     glutTimerFunc(500, timerEvent, 0);
-    glutSetWindowTitle((std::string(GameTitle) + (Start ? " Start" : " Stop")).c_str());
+    glutSetWindowTitle((std::string(GameTitle) + (Start.load() ? " Start" : " Stop")).c_str());
 }
 
 void mouseEvent(int button, int state, int x, int y) {
@@ -123,8 +124,9 @@ void mouseEvent(int button, int state, int x, int y) {
         const int32_t nx = x / (PxLineX);
         const int32_t ny = y / (PxLineY);
         std::cout << "Mouse event ( " << nx << " " << ny << ")" << std::endl;
-        if (nx < life->m_dimension.X && ny < life->m_dimension.Y) {
-            life->cellMatrix.Get({nx, life->m_dimension.Y - ny - 1}).pow ^= 1;
+        const auto dimension = life->GetDimension();
+        if (nx < dimension.X && ny < dimension.Y) {
+            life->GetCell({nx, dimension.Y - ny - 1}).pow ^= 1;
         }
         display();
     }
@@ -163,7 +165,7 @@ void displayNet() {
 }
 
 void displayLifeMap(const Life& map) {
-    map.cellMatrix.ForEach([](const Coord& c, const Cell& item) {
+    map.ForEachCell([](const Coord& c, const Cell& item) {
         if (item.pow > 0) {
             glBegin(GL_QUADS);
             glColor3f(1.0, 1.0, 1.0);
@@ -177,7 +179,7 @@ void displayLifeMap(const Life& map) {
 }
 
 void timerEvent(int) {
-    if (Start) {
+    if (Start.load()) {
         life->Quant();
         display();
         glutTimerFunc(std::chrono::duration_cast<std::chrono::milliseconds>(options.GetQuantTime()).count(), timerEvent,
