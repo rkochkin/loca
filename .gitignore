@@ -45,3 +45,5 @@ Temporary Items
 # CLion configs and generated files
 .idea
 cmake-build-*
+.vscode
+build
