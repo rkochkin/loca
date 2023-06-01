@@ -2,11 +2,11 @@
 #include "coord.h"
 #include "field.h"
 #include "life.h"
+#include <atomic>
 #include <iostream>
 #include <memory>
 #include <options.h>
 #include <vector>
-#include <atomic>
 
 #if defined(linux) || defined(_WIN32)
     #include <GL/glut.h> /*Для Linux и Windows*/
@@ -78,6 +78,8 @@ int main(int argc, char* argv[]) {
         glutKeyboardFunc(keyPressed);
         glutMouseFunc(mouseEvent);
 
+        timerEvent(0);
+
         glutMainLoop();
     } catch (std::exception& e) {
         std::cerr << "ERR: " << e.what();
@@ -115,7 +117,6 @@ void keyPressed(unsigned char key, int, int) {
     std::cout << "keyPressed(): " << key << std::endl;
 
     Start.fetch_xor(1);
-    glutTimerFunc(500, timerEvent, 0);
     glutSetWindowTitle((std::string(GameTitle) + (Start.load() ? " Start" : " Stop")).c_str());
 }
 
@@ -182,7 +183,6 @@ void timerEvent(int) {
     if (Start.load()) {
         life->Quant();
         display();
-        glutTimerFunc(std::chrono::duration_cast<std::chrono::milliseconds>(options.GetQuantTime()).count(), timerEvent,
-                      1);
     }
+    glutTimerFunc(std::chrono::duration_cast<std::chrono::milliseconds>(options.GetQuantTime()).count(), timerEvent, 1);
 }
