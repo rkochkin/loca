@@ -4,10 +4,9 @@
 
 class Life {
 public:
-
     Life() = default;
 
-    Life(const Coord& dimension, const ActionFunc& actFn, int pow = 0);
+    Life(const Coord& dimension, const ActionFunc& actFn = lifeGameDefaultStrategy, int pow = 0);
 
     Cell& GetCell(const Coord& c);
 
@@ -16,6 +15,8 @@ public:
     const Coord& GetDimension() const;
 
     void Quant();
+
+    static Cell lifeGameDefaultStrategy(const CellMatrix& cellMatrix, const Coord& selfCoord);
 
 private:
     CellMatrix m_cellMatrix;

@@ -28,30 +28,12 @@ namespace {
     Coord cellNumber;
 }// namespace
 
-Cell lifeAct(const CellMatrix& cellMatrix, const Coord& selfCoord) {
-    Cell cell = cellMatrix.Get(selfCoord);
-    auto sum = cellMatrix.NeighborsSum(selfCoord);
-    if (cellMatrix.Get(selfCoord).pow > 0) {// Если клетка живая
-        if (sum == 2 || sum == 3)           // Если есть 2 или 3 живые соседки
-            cell.pow = 1;                   // то клетка продолжает жить
-        else
-            cell.pow = 0;// иначе умирает
-    } else {             // Если пусто
-        if (sum == 3)    // Если есть ровно 3 живые соседки
-            cell.pow = 1;// зарождается жизнь в клетке
-        else
-            cell.pow = 0;
-    }
-    return cell;
-}
-
-
 void reshape(int w, int h);
 void display();
 void keyPressed(unsigned char key, int x, int y);
 void mouseEvent(int button, int state, int x, int y);
 void displayLifeMap(const Life& map);
-void displayNet();
+void displayNet(const Coord& windowResolution);
 void timerEvent(int value);
 
 int main(int argc, char* argv[]) {
@@ -65,7 +47,7 @@ int main(int argc, char* argv[]) {
         PxLineX = static_cast<float>(windowResolution.X) / cellNumber.X;
         PxLineY = static_cast<float>(windowResolution.Y) / cellNumber.Y;
 
-        life = std::make_unique<Life>(options.GetCellNumber(), lifeAct, 0);
+        life = std::make_unique<Life>(options.GetCellNumber());
 
         glutInit(&argc, argv);
         glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA); /*Включаем двойную буферизацию и четырехкомпонентный цвет*/
@@ -108,7 +90,7 @@ void reshape(int w, int h) {
 void display() {
     glClear(GL_COLOR_BUFFER_BIT);
 
-    displayNet();
+    displayNet(windowResolution);
     displayLifeMap(*life);
     glutSwapBuffers();
 }
@@ -133,34 +115,32 @@ void mouseEvent(int button, int state, int x, int y) {
     }
 }
 
-void displayNet() {
-    const auto ResolutionX = windowResolution.X;
-    const auto ResolutionY = windowResolution.Y;
+void displayNet(const Coord& wRes) {
 
     glBegin(GL_LINES);
     glColor3f(1.0, 0.0, 0.0);
     glVertex2i(0, 0);
-    glVertex2i(ResolutionX, 0);
+    glVertex2i(wRes.X, 0);
 
-    glVertex2i(ResolutionX, 0);
-    glVertex2i(ResolutionX, ResolutionY);
+    glVertex2i(wRes.X, 0);
+    glVertex2i(wRes.X, wRes.Y);
 
-    glVertex2i(ResolutionX, ResolutionY);
-    glVertex2i(0, ResolutionY);
+    glVertex2i(wRes.X, wRes.Y);
+    glVertex2i(0, wRes.Y);
 
-    glVertex2i(0, ResolutionY);
+    glVertex2i(0, wRes.Y);
     glVertex2i(0, 0);
 
     glColor3f(0.2, 0.2, 0.2);
 
-    for (float i = 0; i < ResolutionX; i += PxLineX) {
+    for (float i = 0; i < wRes.X; i += PxLineX) {
         glVertex2f(i, 0);
-        glVertex2f(i, ResolutionY);
+        glVertex2f(i, wRes.Y);
     }
 
-    for (float i = 0; i < ResolutionY; i += PxLineY) {
+    for (float i = 0; i < wRes.Y; i += PxLineY) {
         glVertex2f(0, i);
-        glVertex2f(ResolutionX, i);
+        glVertex2f(wRes.X, i);
     }
     glEnd();
 }
